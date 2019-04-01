@@ -42,8 +42,9 @@ provider:
 #            - "/*"
 
 # you can define service wide environment variables here
-#  environment:
-#    variable1: value1
+  environment:
+    PUBLIC_KEY: 2fb4e0c35fb05cf3c9f8c8e8e92d6626
+    PRIVATE_KEY: 3377d5af99cc620aa28584bead41c035e98fcc3f
 
 # you can add packaging information here
 #package:
@@ -55,8 +56,10 @@ provider:
 #    - exclude-me-dir/**
 
 functions:
-  hello:
-    handler: handler.hello
+  index:
+    handler: handler.comics
+    events:
+      - http: GET comics
 
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
