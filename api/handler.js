@@ -11,15 +11,16 @@ const keepCacheAliveFor = 300000 // 300000 = 5 minutes
 
 const acceptedParams = [
   'limit',
+  'offset',
   'titleStartsWith'
 ]
 
 // Utilizing lambda's cold area to cache some data
-var coldCache = {
-  cachedAt: 0,
-  data: {},
-  url: {}
-}
+var cache = [] // arr of
+// {
+//   cachedAt: 0,
+//   data: {}
+// }
 
 module.exports.comics = async function(event, context, callback) {
     let startTime = Date.now();
@@ -52,12 +53,13 @@ module.exports.comics = async function(event, context, callback) {
     };
 
     if(
-      Date.now() - coldCache.cachedAt < keepCacheAliveFor
-      && coldCache.url == comicsUrl
+      cache[comicsUrl] != null &&
+      Date.now() - cache[url].cachedAt < keepCacheAliveFor
       ) {
       // Use cache
       console.log("Time elapsed",Date.now() - startTime);
-      response.body = constructResponseBody(coldCache.data,startTime)
+      console.log("Cached",cache);
+      response.body = constructResponseBody(cache[comicsUrl].data,startTime)
       callback(null, response);
     } else {
       // Call marvel
@@ -70,9 +72,12 @@ module.exports.comics = async function(event, context, callback) {
           response.body = constructResponseBody(respjson,startTime)
 
           // Cache the response for later use
-          coldCache.cachedAt = Date.now();
-          coldCache.data = respjson;
-          coldCache.url = comicsUrl; // cache the url so we'd know if it changes
+          // use the url as the key
+          cache[comicsUrl] = {
+            cachedAdt: Date.now(),
+            data: respjson
+          }
+          console.log("Cached",cache);
         } else {
           console.log("Received a non-200: ",respjson.code)
           response.statusCode = 500;

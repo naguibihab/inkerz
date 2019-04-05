@@ -15,3 +15,18 @@
 hr {
   width: 50%
 }
+
+/* Pagination */
+.pagination_group {
+  text-align: center;
+}
+
+.pagination_item {
+  list-style-type: none;
+  display: inline-block;
+  margin: 5px;
+}
+
+.pagination_item_active {
+  font-weight: bold;
+}
