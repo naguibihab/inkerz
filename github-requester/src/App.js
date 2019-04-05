@@ -7,14 +7,23 @@ class App extends Component {
     super()
     this.state = {
       loadTime: 0,
-      comics: []
+      comics: [],
+      searchQuery: '',
+      timer: 0
     }
-    this.loadComics = this.loadComics.bind(this)
-    this.loadComics()
+    this.searchByTitle = this.searchByTitle.bind(this);
+    this.loadComics = this.loadComics.bind(this);
+
+    this.loadComics();
   }
 
-  loadComics () {
-    axios.get('https://g99zlbwhqc.execute-api.us-east-1.amazonaws.com/dev/comics')
+  loadComics (searchQuery = null) {
+    let url = 'https://g99zlbwhqc.execute-api.us-east-1.amazonaws.com/dev/comics?limit=10';
+    if(searchQuery != null) {
+      url += "&titleStartsWith="+searchQuery
+    }
+    console.log("url",url)
+    axios.get(url)
     .then(response => {
       console.log(response.data.resp.data)
       this.setState({
@@ -22,6 +31,19 @@ class App extends Component {
         comics: response.data.resp.data.results
       })
     })
+  }
+
+  searchByTitle (query) {
+    this.setState({searchQuery: query});
+
+    // Trigger api call after 0.5 seconds of inactivity
+    clearTimeout(this.state.timer)
+    this.state.timer = setTimeout(
+      function() {
+        this.loadComics(query)
+      }.bind(this),
+      500
+    )
   }
 
   renderMeta () {
@@ -44,13 +66,20 @@ class App extends Component {
 
   render () {
     return (
-      <div class="body">
-        <div class="comics">
+      <div className="body">
+        <div className="comics">
           <h2> Comics: </h2>
+          Search: <input 
+                    type="text" 
+                    name="searchByTitle" 
+                    placeholder="Search"
+                    value={this.state.searchQuery} 
+                    onChange={e => this.searchByTitle(e.target.value)}
+                  />
           {this.renderComics()}
         </div>
         <hr></hr>
-        <div class="meta">
+        <div className="meta">
           {this.renderMeta()}
         </div>
       </div>
