@@ -30,7 +30,8 @@ module.exports.comics = async function(event, context, callback) {
     var response = {
       statusCode: 200,
       headers: {
-        "Content-Type": "application/json; charset=utf-8"
+        "Content-Type": "application/json; charset=utf-8",
+        "Access-Control-Allow-Origin": "*"
       },
       body: ""
     };

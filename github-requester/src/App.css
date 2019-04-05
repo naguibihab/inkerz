@@ -1,12 +1,17 @@
-.button__container {
-  margin-top: 200px;
+.body {
+  width: 50%;
+  margin-left: 25%;
+}
+
+.comics {
   text-align: center;
 }
-.button {
-  background-color:green;
-  border: none;
-  color: white;
-  font-size: 16px;
-  height: 40px;
-  width: 200px;
+
+.meta {
+  font-style: italic;
+  text-align: left;
+}
+
+hr {
+  width: 50%
 }
