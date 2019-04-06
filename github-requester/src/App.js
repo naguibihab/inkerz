@@ -1,11 +1,16 @@
 import React, { Component } from 'react'
+import ClipLoader from 'react-spinners/ClipLoader'
+
 import './App.css'
 import axios from 'axios'
 import Comic from './Comic.js'
+
 class App extends Component {
   constructor () {
     super()
     this.state = {
+      loading: true,
+
       loadTime: 0,
       comics: [],
       searchQuery: '',
@@ -18,11 +23,19 @@ class App extends Component {
     this.searchByTitle = this.searchByTitle.bind(this);
     this.loadComics = this.loadComics.bind(this);
     this.setPage = this.setPage.bind(this);
+    this.clearComics = this.setPage.bind(this);
 
-    this.loadComics();
+    this.loadComics(false, 0, null);
   }
+  
+  loadComics (clearState = true, offset = 0, searchQuery = null) {
+    if (clearState)
+      this.setState({
+        loadTime: 0,
+        comics: [],
+        loading: true
+      })
 
-  loadComics (offset = 0, searchQuery = null) {
     let url = 'https://g99zlbwhqc.execute-api.us-east-1.amazonaws.com/dev/comics?limit='+this.state.limit;
     url += "&offset="+offset
     if(searchQuery != null) {
@@ -35,7 +48,8 @@ class App extends Component {
       this.setState({
         loadTime: response.data.meta.timeElapsed,
         comics: response.data.resp.data.results,
-        total: response.data.resp.data.total
+        total: response.data.resp.data.total,
+        loading: false
       })
     })
   }
@@ -48,7 +62,7 @@ class App extends Component {
     this.setState({
       timer: setTimeout(
         function() {
-          this.loadComics(0,query)
+          this.loadComics(true,0,query)
         }.bind(this),
         500
       )
@@ -57,7 +71,7 @@ class App extends Component {
 
   setPage (pageNo) {
     let offset = (pageNo - 1) * this.state.limit
-    this.loadComics(offset,null)
+    this.loadComics(true,offset,null)
     this.setState({
       page: pageNo
     })
@@ -74,6 +88,12 @@ class App extends Component {
   renderComics () {
     return (
       <div>
+        <ClipLoader
+          sizeUnit={"px"}
+          size={100}
+          color={'#123abc'}
+          loading={this.state.loading}
+        />
         {this.state.comics.map((comic,key) =>
           <Comic comic={comic} key={comic.id}></Comic>
         )}
@@ -104,8 +124,8 @@ class App extends Component {
               <a onClick={() => this.setPage(numberOfPages)}>Last</a>
           </li>
 
-        {visiblePages.map((page) =>
-          <li className={this.state.page === page ? 'pagination_item pagination_item_active' : 'pagination_item'}>
+        {visiblePages.map((page,key) =>
+          <li key={key} className={this.state.page === page ? 'pagination_item pagination_item_active' : 'pagination_item'}>
               <a onClick={() => this.setPage(page)}>
                 {page}
               </a>
