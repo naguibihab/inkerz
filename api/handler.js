@@ -12,7 +12,8 @@ const keepCacheAliveFor = 300000 // 300000 = 5 minutes
 const acceptedParams = [
   'limit',
   'offset',
-  'titleStartsWith'
+  'titleStartsWith',
+  'orderBy'
 ]
 
 // Utilizing lambda's cold area to cache some data
@@ -32,12 +33,15 @@ module.exports.comics = async function(event, context, callback) {
     comicsUrl += '&ts='+ts
     comicsUrl += '&hash='+md5(ts+privateKey+publicKey)
 
+    cacheKey = ''
+
     // Controling the params sent by client
     Object.entries(event.queryStringParameters).forEach((param) => {
       let key = param[0]
       let value = param[1]
       if(acceptedParams.indexOf(key) > -1){
         comicsUrl += '&'+key+'='+value
+        cacheKey += '&'+key+'='+value
       }
     })
 
@@ -53,16 +57,18 @@ module.exports.comics = async function(event, context, callback) {
     };
 
     if(
-      cache[comicsUrl] != null &&
-      Date.now() - cache[url].cachedAt < keepCacheAliveFor
+      cache[cacheKey] != null &&
+      Date.now() - cache[cacheKey].cachedAt < keepCacheAliveFor
       ) {
       // Use cache
+      console.log("Using cache")
       console.log("Time elapsed",Date.now() - startTime);
       console.log("Cached",cache);
-      response.body = constructResponseBody(cache[comicsUrl].data,startTime)
+      response.body = constructResponseBody(cache[cacheKey].data,startTime)
       callback(null, response);
     } else {
       // Call marvel
+      console.log("Calling API")
       await rp(comicsUrl)
       .then(function(resp){
         respjson = JSON.parse(resp)
@@ -73,8 +79,8 @@ module.exports.comics = async function(event, context, callback) {
 
           // Cache the response for later use
           // use the url as the key
-          cache[comicsUrl] = {
-            cachedAdt: Date.now(),
+          cache[cacheKey] = {
+            cachedAt: Date.now(),
             data: respjson
           }
           console.log("Cached",cache);

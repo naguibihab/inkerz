@@ -3,4 +3,28 @@
     margin-left: 10%;
     border: 1px solid;
     padding: 10px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+}
+
+.comic_title {
+    text-align: center;
+    flex: auto;
+}
+
+.comic_img {
+    width: 200px;
+    padding: 20px;
+}
+
+.comic_creators {
+    flex-flow: column wrap;
+}
+
+.comic_creators span {
+    text-align: center;
+    flex: auto;
+    flex-flow: column wrap;
 }

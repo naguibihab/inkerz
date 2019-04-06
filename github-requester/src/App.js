@@ -1,33 +1,64 @@
 import React, { Component } from 'react'
+import ClipLoader from 'react-spinners/ClipLoader'
+
 import './App.css'
 import axios from 'axios'
 import Comic from './Comic.js'
+
 class App extends Component {
   constructor () {
     super()
     this.state = {
-      loadTime: 0,
-      comics: [],
-      searchQuery: '',
+      // config
+      loading: true,
       timer: 0,
+
+      // data
+      loadTime: undefined,
+      comics: [],
       
+      // filters
+      searchQuery: '',
+      orderBy: 'title',
+
+      // pagination
       page: 1,
       total: 0,
       limit: 10
     }
-    this.searchByTitle = this.searchByTitle.bind(this);
+    // Data
     this.loadComics = this.loadComics.bind(this);
+
+    // Filters
+    this.searchByTitle = this.searchByTitle.bind(this);
+    this.orderByTitle = this.orderByTitle.bind(this);
+    this.clearFilters = this.clearFilters.bind(this);
+
+    // Pagination
     this.setPage = this.setPage.bind(this);
-
-    this.loadComics();
+    
+    this.loadComics(false, 0);
   }
+  
+  loadComics (clearState = true, offset = 0) {
+    if (clearState)
+      this.setState({
+        loadTime: undefined,
+        comics: [],
+        loading: true
+      })
 
-  loadComics (offset = 0, searchQuery = null) {
     let url = 'https://g99zlbwhqc.execute-api.us-east-1.amazonaws.com/dev/comics?limit='+this.state.limit;
     url += "&offset="+offset
-    if(searchQuery != null) {
-      url += "&titleStartsWith="+searchQuery
+    
+    // Filters
+    if(this.state.searchQuery && this.state.searchQuery !== '') {
+      url += "&titleStartsWith="+this.state.searchQuery
     }
+    if(this.state.orderBy && this.state.orderBy !== '') {
+      url += "&orderBy="+this.state.orderBy
+    }
+
     console.log("url",url)
     axios.get(url)
     .then(response => {
@@ -35,7 +66,8 @@ class App extends Component {
       this.setState({
         loadTime: response.data.meta.timeElapsed,
         comics: response.data.resp.data.results,
-        total: response.data.resp.data.total
+        total: response.data.resp.data.total,
+        loading: false
       })
     })
   }
@@ -48,25 +80,38 @@ class App extends Component {
     this.setState({
       timer: setTimeout(
         function() {
-          this.loadComics(0,query)
+          this.loadComics(true,0)
         }.bind(this),
         500
       )
     })
   }
 
+  orderByTitle (query) {
+    this.setState({orderBy: query});
+    this.loadComics(true,0)
+  }
+
   setPage (pageNo) {
     let offset = (pageNo - 1) * this.state.limit
-    this.loadComics(offset,null)
+    this.loadComics(true,offset)
     this.setState({
       page: pageNo
     })
   }
 
+  clearFilters () {
+    this.setState({
+      searchQuery: '',
+      orderBy: ''
+    })
+    this.loadComics(true,0)
+  }
+
   renderMeta () {
     return (
       <pre>
-        Loaded in: {this.state.loadTime / 1000} seconds
+        {this.state.loadTime >= 0 ? <span>Loaded in: {this.state.loadTime / 1000} seconds</span> : null}
       </pre>
     )
   }
@@ -74,11 +119,46 @@ class App extends Component {
   renderComics () {
     return (
       <div>
+        <ClipLoader
+          sizeUnit={"px"}
+          size={100}
+          color={'#123abc'}
+          loading={this.state.loading}
+        />
         {this.state.comics.map((comic,key) =>
           <Comic comic={comic} key={comic.id}></Comic>
         )}
       </div>
     )
+  }
+
+  renderFilters() {
+      return (
+        <div className="filters">
+          <div>
+            <label>Search by title:</label> 
+            <input 
+              type="text" 
+              name="searchByTitle" 
+              placeholder="title name"
+              value={this.state.searchQuery} 
+              onChange={e => this.searchByTitle(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label>Sort by title:</label> 
+            <select value={this.state.orderBy} onChange={ e=> this.orderByTitle(e.target.value)}>
+              <option value="title">Ascending</option>
+              <option value="-title">Descending</option>
+            </select>
+          </div>
+
+          <button onClick={this.clearFilters}>
+            Clear
+          </button>
+        </div>
+      )
   }
 
   renderPagination () {
@@ -104,8 +184,8 @@ class App extends Component {
               <a onClick={() => this.setPage(numberOfPages)}>Last</a>
           </li>
 
-        {visiblePages.map((page) =>
-          <li className={this.state.page === page ? 'pagination_item pagination_item_active' : 'pagination_item'}>
+        {visiblePages.map((page,key) =>
+          <li key={key} className={this.state.page === page ? 'pagination_item pagination_item_active' : 'pagination_item'}>
               <a onClick={() => this.setPage(page)}>
                 {page}
               </a>
@@ -122,22 +202,16 @@ class App extends Component {
   render () {
     return (
       <div className="body">
+        <div className="meta">
+          {this.renderMeta()}
+        </div>
         <div className="comics">
           <h2> Comics: </h2>
-          Search: <input 
-                    type="text" 
-                    name="searchByTitle" 
-                    placeholder="Search"
-                    value={this.state.searchQuery} 
-                    onChange={e => this.searchByTitle(e.target.value)}
-                  />
+          {this.renderFilters()}
           {this.renderComics()}
         </div>
         {this.renderPagination()}
         <hr></hr>
-        <div className="meta">
-          {this.renderMeta()}
-        </div>
       </div>
     )
   }
