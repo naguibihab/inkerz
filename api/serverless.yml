@@ -56,12 +56,26 @@ provider:
 #    - exclude-me-dir/**
 
 functions:
-  index:
-    handler: handler.comics
+  get-comics:
+    handler: handler.getComics
     events:
       - http: 
           path: comics
           method: get
+          cors: true
+  update-comic:
+    handler: handler.updateComic
+    events:
+      - http: 
+          path: comics/{id}
+          method: post
+          cors: true
+  delete-comic:
+    handler: handler.deleteComic
+    events:
+      - http: 
+          path: comics/{id}
+          method: delete
           cors: true
 
 #    The following are a few example events you can configure

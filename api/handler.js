@@ -23,7 +23,9 @@ var cache = [] // arr of
 //   data: {}
 // }
 
-module.exports.comics = async function(event, context, callback) {
+// getComics calls Marvel API to fetch some comics & stores them in a cache
+// that lasts based on keepCacheAliveFor
+module.exports.getComics = async function(event, context, callback) {
     let startTime = Date.now();
     var comicsUrl = 'https://gateway.marvel.com:443/v1/public/comics'
 
@@ -45,7 +47,7 @@ module.exports.comics = async function(event, context, callback) {
       }
     })
 
-    console.log("Marvel url:", comicsUrl)
+    console.log("Calling marvel url to fetch data:", comicsUrl)
 
     var response = {
       statusCode: 200,
@@ -64,7 +66,7 @@ module.exports.comics = async function(event, context, callback) {
       console.log("Using cache")
       console.log("Time elapsed",Date.now() - startTime);
       console.log("Cached",cache);
-      response.body = constructResponseBody(cache[cacheKey].data,startTime)
+      response.body = constructResponseBody(cache[cacheKey].data,startTime,cacheKey)
       callback(null, response);
     } else {
       // Call marvel
@@ -75,14 +77,14 @@ module.exports.comics = async function(event, context, callback) {
         console.log("Time elapsed",Date.now() - startTime);
 
         if (respjson.code == 200) { // We're expecting 200, anything else is an error
-          response.body = constructResponseBody(respjson,startTime)
-
+          
           // Cache the response for later use
           // use the url as the key
           cache[cacheKey] = {
             cachedAt: Date.now(),
             data: respjson
           }
+          response.body = constructResponseBody(respjson,startTime,cacheKey)
           console.log("Cached",cache);
         } else {
           console.log("Received a non-200: ",respjson.code)
@@ -101,11 +103,32 @@ module.exports.comics = async function(event, context, callback) {
     }
 };
 
-function constructResponseBody(resp,startTime) {
+// Updates a comic in the cache by the comic id
+module.exports.updateComic = async function(event, context, callback) {
+  let startTime = Date.now();
+  let id = event.pathParameters.id;
+
+  cacheKey = ''
+
+  // Controling the params sent by client
+  Object.entries(event.queryStringParameters).forEach((param) => {
+    let key = param[0]
+    let value = param[1]
+    if(acceptedParams.indexOf(key) > -1){
+      cacheKey += '&'+key+'='+value
+    }
+  })
+
+  // Fetching the comic from the cached data
+  
+};
+
+function constructResponseBody(resp,startTime,cacheKey) {
   return JSON.stringify({
     resp: resp,
     meta: {
-      timeElapsed: Date.now() - startTime
+      timeElapsed: Date.now() - startTime,
+      cacheKey: cacheKey
     }
   });
 }
