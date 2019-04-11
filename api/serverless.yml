@@ -41,11 +41,6 @@ provider:
 #            - "Ref" : "ServerlessDeploymentBucket"
 #            - "/*"
 
-# you can define service wide environment variables here
-  environment:
-    PUBLIC_KEY: 2fb4e0c35fb05cf3c9f8c8e8e92d6626
-    PRIVATE_KEY: 3377d5af99cc620aa28584bead41c035e98fcc3f
-
 # you can add packaging information here
 #package:
 #  include:
@@ -56,14 +51,45 @@ provider:
 #    - exclude-me-dir/**
 
 functions:
-  index:
-    handler: handler.comics
+  get-applications:
+    handler: handler.getApps
     events:
       - http: 
-          path: comics
+          path: applications
+          method: get
+          cors: true
+  
+  create-application:
+    handler: handler.createApp
+    events:
+      - http: 
+          path: applications
+          method: post
+          cors: true
+
+  update-application:
+    handler: handler.updateApp
+    events:
+      - http: 
+          path: applications/{id}
+          method: put
+          cors: true
+
+  get-application-by-id:
+    handler: handler.getAppById
+    events:
+      - http: 
+          path: applications/{id}
           method: get
           cors: true
 
+  delete-application:
+    handler: handler.deleteApp
+    events:
+      - http: 
+          path: applications/{id}
+          method: delete
+          cors: true
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details

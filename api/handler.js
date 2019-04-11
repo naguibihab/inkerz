@@ -1,6 +1,7 @@
 // handler.js
 const rp = require('request-promise');
 const md5 = require('md5');
+const uuidv1 = require('uuid/v1');
 
 'use strict';
 
@@ -16,96 +17,234 @@ const acceptedParams = [
   'orderBy'
 ]
 
-// Utilizing lambda's cold area to cache some data
 var cache = [] // arr of
 // {
 //   cachedAt: 0,
 //   data: {}
 // }
 
-module.exports.comics = async function(event, context, callback) {
-    let startTime = Date.now();
-    var comicsUrl = 'https://gateway.marvel.com:443/v1/public/comics'
+var liability = {}
+// { 
+//   name: string
+//   value: number
+// }
 
-    // Constructing url
-    let ts = startTime
-    comicsUrl += '?apikey='+publicKey;
-    comicsUrl += '&ts='+ts
-    comicsUrl += '&hash='+md5(ts+privateKey+publicKey)
+var asset = {}
+// { 
+//   name: string
+//   value: number
+// }
 
-    cacheKey = ''
+var application = {}
+// {
+  // applicant_first_name: string
+  // applicant_last_name: string
+  // loan_amount: number
+  // lender_id: string (CMB, STG, NCP, NAB)
+  // id: number
+  // assets: []asset
+  // liabilities: []liability 
+// }
 
-    // Controling the params sent by client
-    Object.entries(event.queryStringParameters).forEach((param) => {
-      let key = param[0]
-      let value = param[1]
-      if(acceptedParams.indexOf(key) > -1){
-        comicsUrl += '&'+key+'='+value
-        cacheKey += '&'+key+'='+value
-      }
-    })
+var data_asset1 = {
+  name: "house",
+  value: 1000000
+}
 
-    console.log("Marvel url:", comicsUrl)
+var data_asset2 = {
+  name: "car",
+  value: 20000
+}
 
-    var response = {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        "Access-Control-Allow-Origin": "*"
-      },
-      body: ""
-    };
+var data_liability1 = {
+  name: "lib1",
+  value: 100
+}
 
-    if(
-      cache[cacheKey] != null &&
-      Date.now() - cache[cacheKey].cachedAt < keepCacheAliveFor
-      ) {
-      // Use cache
-      console.log("Using cache")
-      console.log("Time elapsed",Date.now() - startTime);
-      console.log("Cached",cache);
-      response.body = constructResponseBody(cache[cacheKey].data,startTime)
-      callback(null, response);
-    } else {
-      // Call marvel
-      console.log("Calling API")
-      await rp(comicsUrl)
-      .then(function(resp){
-        respjson = JSON.parse(resp)
-        console.log("Time elapsed",Date.now() - startTime);
+var data_liability2 = {
+  name: "lib1",
+  value: 100
+}
 
-        if (respjson.code == 200) { // We're expecting 200, anything else is an error
-          response.body = constructResponseBody(respjson,startTime)
+var data_app1 = {
+  id: 1,
+  applicant_first_name: "John",
+  applicant_last_name: "Doe",
+  loan_amount: 1000,
+  lender_id: "NAB",
+  assets: new Array(
+    data_asset1,
+    data_asset2
+  ),
+  liabilities: new Array(
+    data_liability1,
+    data_liability2
+  )
+}
 
-          // Cache the response for later use
-          // use the url as the key
-          cache[cacheKey] = {
-            cachedAt: Date.now(),
-            data: respjson
-          }
-          console.log("Cached",cache);
-        } else {
-          console.log("Received a non-200: ",respjson.code)
-          response.statusCode = 500;
-          response.body = "Something went wrong on Marvel's side"
-        }
-        
-        callback(null, response);
-      })
-      .catch(function(err){
-        console.log("Error",err);
-        response.statusCode = 500;
-        response.body = "Something went wrong on the server side"
-        callback(null, response);
-      })
-    }
+var data_app2 = {
+  id: 2,
+  applicant_first_name: "Jane",
+  applicant_last_name: "Doe",
+  loan_amount: 200,
+  lender_id: "STG",
+  assets: new Array(
+    data_asset1,
+    data_asset2
+  ),
+  liabilities: new Array(
+    data_liability1,
+    data_liability2
+  )
+}
+
+var data_apps = {
+  1: data_app1,
+  2: data_app2
+}
+
+// Template response
+var response = {
+  statusCode: 200,
+  headers: {
+    "Content-Type": "application/json; charset=utf-8",
+    "Access-Control-Allow-Origin": "*"
+  },
+  body: ""
 };
 
-function constructResponseBody(resp,startTime) {
-  return JSON.stringify({
-    resp: resp,
-    meta: {
-      timeElapsed: Date.now() - startTime
+
+module.exports.getApps = async function(event, context, callback) {
+  response.body = JSON.stringify(data_apps)
+
+  callback(null, response);
+};
+
+module.exports.getAppById = async function(event, context, callback) {
+    // Get the id from url
+    const appId = event.pathParameters.id;
+
+    const found = data_apps[appId];
+    if(found){
+      response.body =  JSON.stringify(found)
+    } else {
+      response.statusCode = 404
     }
-  });
+
+    response.statusCode = 200 // OK
+    callback(null, response);
+};
+
+module.exports.updateApp = async function(event, context, callback) {
+    // Get the id from url
+    const appId = event.pathParameters.id;
+    const body = JSON.parse(event.body);
+
+    if(!validateBody(body)) {
+      response.statusCode = 400;
+      callback(null, response);
+    }
+
+    const found = data_apps[appId];
+
+    if(found){
+      updatedApp = {
+        applicant_first_name: body.first_name,
+        applicant_last_name: body.last_name,
+        loan_amount: body.loan_amount,
+        lender_id: body.lender_id,
+        assets: body.assets,
+        liabilities: body.liabilities
+      }
+
+      data_apps[appId] = updatedApp
+      console.log(data_apps);
+    } else {
+      response.statusCode = 404
+    }
+
+    response.statusCode = 200 // OK
+    callback(null, response);
+}
+
+module.exports.createApp = async function(event, context, callback) {
+  // Insert an application
+  // Status = 201
+  const body = JSON.parse(event.body);
+  const newAppId = uuidv1();
+
+  if(!validateBody(body)) {
+    response.statusCode = 400;
+    callback(null, response);
+  }
+
+  // validations
+  if(body.first_name == null || body.first_name == '') {
+    // todo
+  }
+  if(body.last_name == null || body.last_name == '') {
+  }
+
+  if(body.loan_amount < 1) {
+    // todo
+  }
+
+  body.assets.forEach((asset) => {
+    if(asset.name || asset.name == '') {
+      // todo
+    }
+    if(asset.value < 1) {
+      // todo
+    }
+  })
+
+  var new_app = {
+    applicant_first_name: body.first_name,
+    applicant_last_name: body.last_name,
+    loan_amount: body.loan_amount,
+    lender_id: body.lender_id,
+    assets: body.assets,
+    liabilities: body.liabilities
+  }
+  data_apps[newAppId] = new_app
+
+  response.body =  JSON.stringify({id: newAppId})
+  response.statusCode = 201 // created
+
+  callback(null, response);
+}
+
+module.exports.deleteApp = async function(event, context, callback) {
+    // Get the id from url
+    const appId = event.pathParameters.id;
+
+    const found = data_apps[appId];
+    if(found){
+      data_apps[appId] = null
+    } else {
+      response.statusCode = 404
+    }
+
+    response.statusCode = 204 // No content
+    callback(null, response);
+}
+
+// Helper function to validate the request
+function validateBody(body) {
+  // validations
+  if(body.applicant_first_name == null || body.applicant_first_name == '') {
+    console.log("Warning: Validation failed for firstname")
+    return false;
+  }
+  if(body.applicant_last_name == null || body.applicant_last_name == '') {
+    console.log("Warning: Validation failed for lastname")
+    return false;
+  }
+
+  if(body.loan_amount < 1) {
+    console.log("Warning: Validation failed for loanamount")
+    return false;
+  }
+
+  return true;
 }
